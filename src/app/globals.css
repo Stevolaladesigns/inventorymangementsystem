@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #f7f7f5;
+    --foreground: #1a1a1a;
+    --border: #e4e4e0;
+    --input: #f0f0ec;
+    --primary: #d42b0f;
+    --secondary: #f5a623;
+    --muted: #ede8e3;
+    --muted-foreground: #8a8278;
+    --sidebar: #1e1a18;
+    --sidebar-foreground: #f5f0eb;
+    --success: #1e8a4a;
+    --danger: #d42b0f;
+    --card: #ffffff;
+  }
+}
+
+body {
+  background-color: #f7f7f5;
+  color: #1a1a1a;
+}
+
+/* Thermal Receipt styles */
+.thermal-receipt {
+  background-color: #ffffff;
+  color: #111111;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  border-left: 1px solid rgba(0, 0, 0, 0.03);
+  border-right: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.receipt-top-edge {
+  height: 12px;
+  width: 100%;
+  background-image: 
+    linear-gradient(45deg, #ffffff 25%, transparent 25%),
+    linear-gradient(-45deg, #ffffff 25%, transparent 25%);
+  background-size: 12px 12px;
+  background-repeat: repeat-x;
+  position: absolute;
+  top: -12px;
+  left: 0;
+  z-index: 10;
+}
+
+.receipt-bottom-edge {
+  height: 12px;
+  width: 100%;
+  background-image: 
+    linear-gradient(135deg, #ffffff 25%, transparent 25%),
+    linear-gradient(-135deg, #ffffff 25%, transparent 25%);
+  background-size: 12px 12px;
+  background-repeat: repeat-x;
+  position: absolute;
+  bottom: -12px;
+  left: 0;
+  z-index: 10;
+}
+
+/* Print styles to only print the active receipt */
+@media print {
+  @page {
+    size: A6;
+    margin: 0;
+  }
+  
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 105mm !important;
+    height: 148mm !important;
+    background: white !important;
+    overflow: hidden !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+  
+  .printable-receipt-area,
+  .printable-receipt-area * {
+    visibility: visible !important;
+  }
+  
+  .printable-receipt-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 105mm !important;
+    height: 148mm !important;
+    max-height: 148mm !important;
+    padding: 6mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .receipt-modal-backdrop {
+    display: block !important;
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  
+  .receipt-modal-content-wrapper {
+    display: block !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  
+  /* Ensure backgrounds render when printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Hide the print/close buttons and modal backdrop/close overlays */
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
+

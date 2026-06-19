@@ -1,0 +1,91 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("Staff") // "Admin" or "Staff"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id             String          @id @default(uuid())
+  name           String          @unique
+  contactPerson  String
+  phone          String
+  email          String
+  category       String          // e.g. "Building Materials", "Plumbing"
+  status         String          @default("Active") // "Active" or "Inactive"
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model Product {
+  id             String          @id @default(uuid())
+  name           String
+  sku            String          @unique
+  category       String          // e.g. "Building Materials", "Plumbing"
+  qtyInStock     Int             @default(0)
+  minLevel       Int             @default(10)
+  unit           String          @default("pcs") // e.g. "pcs", "bags", "rolls", "tons"
+  price          Float           // Selling price in GHS
+  description    String?
+  supplierId     String?
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  sales          Sale[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model Sale {
+  id           String   @id @default(uuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qtySold      Int
+  salePrice    Float    // Price sold at
+  saleDate     DateTime @default(now())
+  customerName String   @default("Cash Customer")
+  createdAt    DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id            String   @id @default(uuid())
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  qtyPurchased  Int
+  purchasePrice Float    // Unit cost price
+  purchaseDate  DateTime @default(now())
+  status        String   @default("Delivered") // "Pending", "Delivered", "Cancelled"
+  createdAt     DateTime @default(now())
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String   @default("Bidwest Ghana Ltd")
+  address   String   @default("Plot 14, Spintex Road, Industrial Area, Accra")
+  country   String   @default("Ghana")
+  currency  String   @default("GHS")
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+
