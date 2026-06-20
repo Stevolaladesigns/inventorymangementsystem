@@ -326,14 +326,6 @@ export default function ReportsClient({
                   };
                 }}
               />
-              <div>
-                <h1 className="text-2xl font-bold text-black font-headings leading-none">
-                  {company?.name || "Bidwest Ghana Ltd"}
-                </h1>
-                <p className="text-xs text-gray-500 font-mono mt-1">
-                  Inventory & Procurement Management System
-                </p>
-              </div>
             </div>
             <div className="text-right font-mono text-[10px] text-gray-600 leading-normal">
               <div className="font-bold text-black text-xs mb-1">HEAD OFFICE</div>
