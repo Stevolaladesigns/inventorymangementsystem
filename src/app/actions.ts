@@ -165,30 +165,130 @@ export async function recordPurchase(data: {
 }) {
   await requireManagerOrAdmin();
   const qtyPurchased = Number(data.qtyPurchased);
-  const result = await prisma.$transaction([
-    prisma.purchaseOrder.create({
+  const status = data.status || "Delivered";
+
+  const purchaseOrder = await prisma.$transaction(async (tx) => {
+    const po = await tx.purchaseOrder.create({
       data: {
         supplierId: data.supplierId,
         productId: data.productId,
         qtyPurchased,
         purchasePrice: Number(data.purchasePrice),
-        status: data.status || "Delivered",
+        status,
       },
-    }),
-    prisma.product.update({
-      where: { id: data.productId },
-      data: {
-        qtyInStock: {
-          increment: qtyPurchased,
+    });
+
+    if (status === "Delivered") {
+      await tx.product.update({
+        where: { id: data.productId },
+        data: {
+          qtyInStock: {
+            increment: qtyPurchased,
+          },
         },
-      },
-    }),
-  ]);
+      });
+    }
+
+    return po;
+  });
+
   revalidatePath("/dashboard");
   revalidatePath("/products");
   revalidatePath("/suppliers");
   revalidatePath("/reports");
-  return result[0];
+  return purchaseOrder;
+}
+
+export async function updatePurchaseOrderStatus(id: string, status: string) {
+  await requireManagerOrAdmin();
+
+  const existing = await prisma.purchaseOrder.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    throw new Error("Purchase order not found.");
+  }
+
+  const oldStatus = existing.status;
+  const qtyPurchased = existing.qtyPurchased;
+  const productId = existing.productId;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const po = await tx.purchaseOrder.update({
+      where: { id },
+      data: { status },
+      include: {
+        supplier: true,
+        product: true,
+      },
+    });
+
+    if (oldStatus !== "Delivered" && status === "Delivered") {
+      await tx.product.update({
+        where: { id: productId },
+        data: {
+          qtyInStock: {
+            increment: qtyPurchased,
+          },
+        },
+      });
+    } else if (oldStatus === "Delivered" && status !== "Delivered") {
+      await tx.product.update({
+        where: { id: productId },
+        data: {
+          qtyInStock: {
+            decrement: qtyPurchased,
+          },
+        },
+      });
+    }
+
+    return po;
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/products");
+  revalidatePath("/suppliers");
+  revalidatePath("/reports");
+  return updated;
+}
+
+export async function deletePurchase(id: string) {
+  await requireAdmin();
+
+  const po = await prisma.purchaseOrder.findUnique({
+    where: { id },
+  });
+
+  if (!po) {
+    throw new Error("Purchase order not found.");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const deleted = await tx.purchaseOrder.delete({
+      where: { id },
+    });
+
+    if (po.status === "Delivered") {
+      await tx.product.update({
+        where: { id: po.productId },
+        data: {
+          qtyInStock: {
+            decrement: po.qtyPurchased,
+          },
+        },
+      });
+    }
+
+    return deleted;
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/products");
+  revalidatePath("/suppliers");
+  revalidatePath("/reports");
+  return result;
 }
 
 export async function addSupplier(data: {

@@ -22,7 +22,7 @@ import {
   Printer,
   Trash2,
 } from "lucide-react";
-import { addSupplier, updateSupplier, recordPurchase, deleteSupplier } from "../../actions";
+import { addSupplier, updateSupplier, recordPurchase, deleteSupplier, updatePurchaseOrderStatus } from "../../actions";
 import { useUserRole } from "@/hooks/useUserRole";
 
 
@@ -205,13 +205,17 @@ export default function SuppliersClient({
         supplier: sup,
       };
 
-      // Increment local product quantity
-      if (prod) {
+      // Increment local product quantity ONLY if delivered
+      if (prod && poStatus === "Delivered") {
         prod.qtyInStock += poQty;
       }
 
       setPurchases((prev) => [fullPurchase, ...prev]);
-      setPoSuccess("Purchase order recorded and stock level incremented!");
+      setPoSuccess(
+        poStatus === "Delivered"
+          ? "Purchase order recorded and stock level incremented!"
+          : "Purchase order recorded successfully!"
+      );
 
       // Reset form
       setPoProductId("");
@@ -219,6 +223,33 @@ export default function SuppliersClient({
       setPoPrice(5);
     } catch (err: any) {
       setPoError(err.message || "Failed to log purchase order.");
+    }
+  };
+
+  const handleStatusChange = async (poId: string, newStatus: string) => {
+    try {
+      const result = await updatePurchaseOrderStatus(poId, newStatus);
+      
+      // Find the purchase order in local state
+      const oldPO = purchases.find((p) => p.id === poId);
+      if (!oldPO) return;
+      
+      // Update purchases list
+      setPurchases((prev) =>
+        prev.map((p) => (p.id === poId ? { ...p, status: newStatus } : p))
+      );
+      
+      // Adjust local product stock level
+      const prod = products.find((prod) => prod.id === oldPO.productId);
+      if (prod) {
+        if (oldPO.status !== "Delivered" && newStatus === "Delivered") {
+          prod.qtyInStock += oldPO.qtyPurchased;
+        } else if (oldPO.status === "Delivered" && newStatus !== "Delivered") {
+          prod.qtyInStock -= oldPO.qtyPurchased;
+        }
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to update purchase order status.");
     }
   };
 
@@ -671,17 +702,35 @@ export default function SuppliersClient({
                                 GHS {(p.qtyPurchased * p.purchasePrice).toFixed(2)}
                               </td>
                               <td className="px-4 py-3.5 text-center">
-                                <span
-                                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap ${
-                                    p.status === "Delivered"
-                                      ? "bg-green-50 text-success border border-green-100"
-                                      : p.status === "Pending"
-                                      ? "bg-red-50 text-danger border border-red-100"
-                                      : "bg-amber-50 text-secondary border border-amber-100"
-                                  }`}
-                                >
-                                  {p.status}
-                                </span>
+                                {canEdit ? (
+                                  <select
+                                    value={p.status}
+                                    onChange={(e) => handleStatusChange(p.id, e.target.value)}
+                                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold border outline-none cursor-pointer transition ${
+                                      p.status === "Delivered"
+                                        ? "bg-green-50 text-success border-green-100 focus:ring-1 focus:ring-success"
+                                        : p.status === "Pending"
+                                        ? "bg-red-50 text-danger border border-red-100 focus:ring-1 focus:ring-danger"
+                                        : "bg-amber-50 text-secondary border border-amber-100 focus:ring-1 focus:ring-secondary"
+                                    }`}
+                                  >
+                                    <option value="Pending" className="text-black bg-white">Pending</option>
+                                    <option value="In Transit" className="text-black bg-white">In Transit</option>
+                                    <option value="Delivered" className="text-black bg-white">Delivered</option>
+                                  </select>
+                                ) : (
+                                  <span
+                                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap ${
+                                      p.status === "Delivered"
+                                        ? "bg-green-50 text-success border border-green-100"
+                                        : p.status === "Pending"
+                                        ? "bg-red-50 text-danger border border-red-100"
+                                        : "bg-amber-50 text-secondary border border-amber-100"
+                                    }`}
+                                  >
+                                    {p.status}
+                                  </span>
+                                )}
                               </td>
                               <td className="px-5 py-3.5 text-right">
                                 <button

@@ -15,7 +15,13 @@ import {
   Download,
   Calendar,
   Search,
+  Eye,
+  Trash2,
+  X,
+  ShieldAlert,
 } from "lucide-react";
+import { deleteSale, deletePurchase } from "../../actions";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface ReportsClientProps {
   sales: any[];
@@ -23,7 +29,59 @@ interface ReportsClientProps {
   products: any[];
 }
 
-export default function ReportsClient({ sales, purchases, products }: ReportsClientProps) {
+export default function ReportsClient({
+  sales: initialSales,
+  purchases: initialPurchases,
+  products: initialProducts,
+}: ReportsClientProps) {
+  const [sales, setSales] = useState(initialSales);
+  const [purchases, setPurchases] = useState(initialPurchases);
+  const [products, setProducts] = useState(initialProducts);
+  const { isAdmin } = useUserRole();
+
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
+  const [selectedPODetail, setSelectedPODetail] = useState<any | null>(null);
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  const [poToDelete, setPoToDelete] = useState<string | null>(null);
+
+  const runDeleteSale = async (id: string) => {
+    try {
+      await deleteSale(id);
+      const deletedSale = sales.find((s) => s.id === id);
+      if (deletedSale) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === deletedSale.productId
+              ? { ...p, qtyInStock: p.qtyInStock + deletedSale.qtySold }
+              : p
+          )
+        );
+      }
+      setSales((prev) => prev.filter((s) => s.id !== id));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete sale.");
+    }
+  };
+
+  const runDeletePurchase = async (id: string) => {
+    try {
+      await deletePurchase(id);
+      const deletedPO = purchases.find((p) => p.id === id);
+      if (deletedPO && deletedPO.status === "Delivered") {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === deletedPO.productId
+              ? { ...p, qtyInStock: p.qtyInStock - deletedPO.qtyPurchased }
+              : p
+          )
+        );
+      }
+      setPurchases((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete purchase order.");
+    }
+  };
+
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "sales" | "movement" | "purchases">("overview");
 
   const getTodayString = () => {
@@ -579,12 +637,15 @@ export default function ReportsClient({ sales, purchases, products }: ReportsCli
                             <th className="px-4 py-3 text-xs text-muted-foreground font-semibold uppercase text-right">Unit Price</th>
                             <th className="px-4 py-3 text-xs text-muted-foreground font-semibold uppercase text-right">Total Revenue</th>
                             <th className="px-5 py-3 text-xs text-muted-foreground font-semibold uppercase">Customer</th>
+                            {isAdmin && (
+                              <th className="px-5 py-3 text-xs text-muted-foreground font-semibold uppercase text-right no-print">Action</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {filteredSales.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
+                              <td colSpan={isAdmin ? 8 : 7} className="px-5 py-10 text-center text-muted-foreground">
                                 No sales records found for this criteria.
                               </td>
                             </tr>
@@ -603,6 +664,28 @@ export default function ReportsClient({ sales, purchases, products }: ReportsCli
                                 <td className="px-4 py-3.5 text-right text-muted-foreground">GHS {s.salePrice.toFixed(2)}</td>
                                 <td className="px-4 py-3.5 text-right font-bold text-primary">GHS {(s.qtySold * s.salePrice).toFixed(2)}</td>
                                 <td className="px-5 py-3.5 font-medium text-foreground">{s.customerName}</td>
+                                {isAdmin && (
+                                  <td className="px-5 py-3.5 text-right no-print">
+                                    <div className="flex items-center justify-end gap-2 text-xs font-semibold">
+                                      <button
+                                        onClick={() => setSelectedSaleDetail(s)}
+                                        className="text-primary hover:underline flex items-center gap-1"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>View</span>
+                                      </button>
+                                      <span className="text-border">|</span>
+                                      <button
+                                        onClick={() => setSaleToDelete(s.id)}
+                                        className="text-red-600 hover:text-red-800 hover:underline flex items-center gap-1"
+                                        title="Delete Sale"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             ))
                           )}
@@ -627,12 +710,15 @@ export default function ReportsClient({ sales, purchases, products }: ReportsCli
                           <th className="px-4 py-3 text-xs text-muted-foreground font-semibold uppercase text-right">Qty Changed</th>
                           <th className="px-4 py-3 text-xs text-muted-foreground font-semibold uppercase">Reference</th>
                           <th className="px-5 py-3 text-xs text-muted-foreground font-semibold uppercase text-right">Value</th>
+                          {isAdmin && (
+                            <th className="px-5 py-3 text-xs text-muted-foreground font-semibold uppercase text-right no-print">Action</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {filteredMovements.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-5 py-10 text-center text-muted-foreground">
+                            <td colSpan={isAdmin ? 8 : 7} className="px-5 py-10 text-center text-muted-foreground">
                               No stock movements found for this criteria.
                             </td>
                           </tr>
@@ -663,6 +749,44 @@ export default function ReportsClient({ sales, purchases, products }: ReportsCli
                               </td>
                               <td className="px-4 py-3.5 font-medium text-foreground">{m.reference}</td>
                               <td className="px-5 py-3.5 text-right font-semibold text-foreground">GHS {m.value.toFixed(2)}</td>
+                              {isAdmin && (
+                                <td className="px-5 py-3.5 text-right no-print">
+                                  <div className="flex items-center justify-end gap-2 text-xs font-semibold">
+                                    <button
+                                      onClick={() => {
+                                        const actualId = m.id.split("-").slice(1).join("-");
+                                        if (m.type === "IN") {
+                                          const po = purchases.find((p) => p.id === actualId);
+                                          if (po) setSelectedPODetail(po);
+                                        } else {
+                                          const sale = sales.find((s) => s.id === actualId);
+                                          if (sale) setSelectedSaleDetail(sale);
+                                        }
+                                      }}
+                                      className="text-primary hover:underline flex items-center gap-1"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>View</span>
+                                    </button>
+                                    <span className="text-border">|</span>
+                                    <button
+                                      onClick={() => {
+                                        const actualId = m.id.split("-").slice(1).join("-");
+                                        if (m.type === "IN") {
+                                          setPoToDelete(actualId);
+                                        } else {
+                                          setSaleToDelete(actualId);
+                                        }
+                                      }}
+                                      className="text-red-600 hover:text-red-800 hover:underline flex items-center gap-1"
+                                      title={m.type === "IN" ? "Delete Purchase" : "Delete Sale"}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))
                         )}
@@ -701,12 +825,15 @@ export default function ReportsClient({ sales, purchases, products }: ReportsCli
                             <th className="px-4 py-3 text-xs text-muted-foreground font-semibold uppercase text-right">Total Cost</th>
                             <th className="px-4 py-3 text-xs text-muted-foreground font-semibold uppercase">Supplier</th>
                             <th className="px-5 py-3 text-xs text-muted-foreground font-semibold uppercase text-center">Status</th>
+                            {isAdmin && (
+                              <th className="px-5 py-3 text-xs text-muted-foreground font-semibold uppercase text-right no-print">Action</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {filteredPurchases.length === 0 ? (
                             <tr>
-                              <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">
+                              <td colSpan={isAdmin ? 9 : 8} className="px-5 py-10 text-center text-muted-foreground">
                                 No purchases found for this criteria.
                               </td>
                             </tr>
@@ -736,6 +863,28 @@ export default function ReportsClient({ sales, purchases, products }: ReportsCli
                                     {p.status}
                                   </span>
                                 </td>
+                                {isAdmin && (
+                                  <td className="px-5 py-3.5 text-right no-print">
+                                    <div className="flex items-center justify-end gap-2 text-xs font-semibold">
+                                      <button
+                                        onClick={() => setSelectedPODetail(p)}
+                                        className="text-primary hover:underline flex items-center gap-1"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>View</span>
+                                      </button>
+                                      <span className="text-border">|</span>
+                                      <button
+                                        onClick={() => setPoToDelete(p.id)}
+                                        className="text-red-600 hover:text-red-800 hover:underline flex items-center gap-1"
+                                        title="Delete Purchase"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             ))
                           )}
@@ -748,6 +897,403 @@ export default function ReportsClient({ sales, purchases, products }: ReportsCli
             </div>
           )}
         </div>
+
+      {/* DETAIL MODAL: VIEW SALE TRANSACTION */}
+      {selectedSaleDetail && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto receipt-modal-backdrop">
+          <div className="relative w-full max-w-sm my-8 flex flex-col items-center receipt-modal-content-wrapper">
+            <button
+              onClick={() => setSelectedSaleDetail(null)}
+              className="absolute -top-10 right-0 p-2 text-white hover:text-gray-200 no-print flex items-center gap-1 text-xs font-semibold"
+            >
+              <X className="w-5 h-5" />
+              <span>Close</span>
+            </button>
+
+            <div className="printable-receipt-area thermal-receipt w-full relative px-4 py-4 flex flex-col gap-2 text-[11px] leading-snug">
+              <div className="receipt-top-edge" />
+              <div className="flex flex-col items-center text-center gap-1">
+                <img
+                  src="/images/logo.png"
+                  alt={process.env.NEXT_PUBLIC_COMPANY_NAME || "Bidwest Ghana Ltd"}
+                  className="h-8 w-auto object-contain"
+                  onError={(e) => {
+                    e.currentTarget.src = process.env.NEXT_PUBLIC_LOGO_FALLBACK_URL || "";
+                  }}
+                />
+                <div className="flex flex-col gap-0.5 text-[9.5px] leading-tight text-black font-semibold font-mono">
+                  <div>{process.env.NEXT_PUBLIC_COMPANY_ADDRESS_1 || "Head Office"}</div>
+                  <div>{process.env.NEXT_PUBLIC_COMPANY_ADDRESS_2 || "Ejisu – Adadientem, Off Kumasi–Accra Road"}</div>
+                  <div>{process.env.NEXT_PUBLIC_COMPANY_ADDRESS_3 || "(near CHRISEC)"}</div>
+                  <div>Phone: {process.env.NEXT_PUBLIC_COMPANY_PHONE || "+233 599 322 132"}</div>
+                  <div>Email: {process.env.NEXT_PUBLIC_COMPANY_EMAIL || "info@bidwestghana.com"}</div>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="text-center font-bold text-xs tracking-widest text-black font-mono">
+                CASH RECEIPT
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="flex flex-col gap-1.5 font-mono text-black">
+                <div className="flex justify-between font-bold border-b border-dashed border-black/30 pb-0.5">
+                  <span>Description</span>
+                  <span className="text-right">Price</span>
+                </div>
+                
+                <div className="flex flex-col">
+                  <div className="flex justify-between font-semibold">
+                    <span className="truncate pr-2">{selectedSaleDetail.product?.name || "Deleted Product"}</span>
+                    <span>GHS {(selectedSaleDetail.qtySold * selectedSaleDetail.salePrice).toFixed(2)}</span>
+                  </div>
+                  <div className="text-[10px] text-black/60 pl-1">
+                    {selectedSaleDetail.qtySold} x GHS {selectedSaleDetail.salePrice.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="flex flex-col gap-1 font-mono text-black">
+                <div className="flex justify-between items-center font-bold text-xs">
+                  <span>Total</span>
+                  <span>GHS {(selectedSaleDetail.qtySold * selectedSaleDetail.salePrice).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="flex flex-col gap-0.5 text-[10px] text-black/75 leading-tight font-mono">
+                <div className="flex justify-between">
+                  <span>Invoice No:</span>
+                  <span className="font-semibold">SL-{selectedSaleDetail.id.substring(0, 8).toUpperCase()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Date:</span>
+                  <span className="font-semibold">
+                    {new Date(selectedSaleDetail.saleDate).toLocaleDateString("en-US", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Time:</span>
+                  <span className="font-semibold">
+                    {new Date(selectedSaleDetail.saleDate).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Cashier:</span>
+                  <span className="font-semibold">Admin Kwame</span>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="text-center font-bold tracking-wider text-black font-mono">
+                THANK YOU!
+              </div>
+
+              <div className="flex flex-col items-center gap-1 mt-1">
+                <div className="flex justify-center items-end h-5 w-full max-w-[160px] bg-white px-2 select-none">
+                  {[2, 1, 3, 1, 2, 2, 1, 3, 2, 1, 4, 1, 2, 3, 1, 2, 1, 3, 2, 2, 1, 4, 2, 1, 3, 1, 2, 2, 1, 3].map((width, idx) => (
+                    <div
+                      key={idx}
+                      className={`h-full ${idx % 2 === 0 ? "bg-black" : "bg-white"}`}
+                      style={{ width: `${width}px` }}
+                    />
+                  ))}
+                </div>
+                <div className="text-[8.5px] text-center text-black/50 tracking-wider font-mono">
+                  {selectedSaleDetail.id.toUpperCase()}
+                </div>
+              </div>
+
+              <div className="receipt-bottom-edge" />
+            </div>
+
+            <div className="w-full grid grid-cols-2 gap-3 mt-6 no-print">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center justify-center gap-2 bg-white text-black border border-gray-300 py-2.5 rounded-md hover:bg-gray-50 text-xs font-bold transition shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Receipt</span>
+              </button>
+              <button
+                onClick={() => setSelectedSaleDetail(null)}
+                className="flex items-center justify-center bg-[#1e1a18] text-white py-2.5 rounded-md hover:bg-[#2e2926] text-xs font-bold transition shadow-sm"
+              >
+                <span>Close Window</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL MODAL: VIEW PURCHASE ORDER */}
+      {selectedPODetail && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto receipt-modal-backdrop">
+          <div className="relative w-full max-w-sm my-8 flex flex-col items-center receipt-modal-content-wrapper">
+            <button
+              onClick={() => setSelectedPODetail(null)}
+              className="absolute -top-10 right-0 p-2 text-white hover:text-gray-200 no-print flex items-center gap-1 text-xs font-semibold"
+            >
+              <X className="w-5 h-5" />
+              <span>Close</span>
+            </button>
+
+            <div className="printable-receipt-area thermal-receipt w-full relative px-4 py-4 flex flex-col gap-2 text-[11px] leading-snug">
+              <div className="receipt-top-edge" />
+              <div className="flex flex-col items-center text-center gap-1">
+                <img
+                  src="/images/logo.png"
+                  alt={process.env.NEXT_PUBLIC_COMPANY_NAME || "Bidwest Ghana Ltd"}
+                  className="h-8 w-auto object-contain"
+                  onError={(e) => {
+                    e.currentTarget.src = process.env.NEXT_PUBLIC_LOGO_FALLBACK_URL || "";
+                  }}
+                />
+                <div className="flex flex-col gap-0.5 text-[9.5px] leading-tight text-black font-semibold font-mono">
+                  <div>{process.env.NEXT_PUBLIC_COMPANY_ADDRESS_1 || "Head Office"}</div>
+                  <div>{process.env.NEXT_PUBLIC_COMPANY_ADDRESS_2 || "Ejisu – Adadientem, Off Kumasi–Accra Road"}</div>
+                  <div>{process.env.NEXT_PUBLIC_COMPANY_ADDRESS_3 || "(near CHRISEC)"}</div>
+                  <div>Phone: {process.env.NEXT_PUBLIC_COMPANY_PHONE || "+233 599 322 132"}</div>
+                  <div>Email: {process.env.NEXT_PUBLIC_COMPANY_EMAIL || "info@bidwestghana.com"}</div>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="text-center font-bold text-xs tracking-widest text-black font-mono">
+                PURCHASE ORDER
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="flex flex-col gap-0.5 font-mono text-black leading-tight text-[10px]">
+                <div className="flex justify-between">
+                  <span className="font-bold">Supplier:</span>
+                  <span className="font-semibold text-right">{selectedPODetail.supplier?.name || "Deleted Supplier"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Contact:</span>
+                  <span className="font-semibold text-right">{selectedPODetail.supplier?.contactPerson || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Category:</span>
+                  <span className="font-semibold text-right">{selectedPODetail.supplier?.category || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Status:</span>
+                  <span className={`font-bold ${selectedPODetail.status === "Delivered" ? "text-green-700" : "text-amber-600"}`}>
+                    {selectedPODetail.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="flex flex-col gap-1.5 font-mono text-black">
+                <div className="flex justify-between font-bold border-b border-dashed border-black/30 pb-0.5">
+                  <span>Description</span>
+                  <span className="text-right">Price</span>
+                </div>
+                
+                <div className="flex flex-col">
+                  <div className="flex justify-between font-semibold">
+                    <span className="truncate pr-2">{selectedPODetail.product?.name || "Deleted Product"}</span>
+                    <span>GHS {(selectedPODetail.qtyPurchased * selectedPODetail.purchasePrice).toFixed(2)}</span>
+                  </div>
+                  <div className="text-[10px] text-black/60 pl-1">
+                    {selectedPODetail.qtyPurchased} x GHS {selectedPODetail.purchasePrice.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="flex flex-col gap-1 font-mono text-black">
+                <div className="flex justify-between items-center font-bold text-xs">
+                  <span>Total Spend</span>
+                  <span>GHS {(selectedPODetail.qtyPurchased * selectedPODetail.purchasePrice).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="flex flex-col gap-0.5 text-[10px] text-black/75 leading-tight font-mono">
+                <div className="flex justify-between">
+                  <span>PO Number:</span>
+                  <span className="font-semibold">PO-{selectedPODetail.id.substring(0, 8).toUpperCase()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Date:</span>
+                  <span className="font-semibold">
+                    {new Date(selectedPODetail.purchaseDate).toLocaleDateString("en-US", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Time:</span>
+                  <span className="font-semibold">
+                    {new Date(selectedPODetail.purchaseDate).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Buyer:</span>
+                  <span className="font-semibold">Admin Kwame</span>
+                </div>
+              </div>
+
+              <div className="text-center font-bold tracking-[0.1em] opacity-40 select-none font-mono text-black">
+                ********************************
+              </div>
+
+              <div className="text-center font-bold tracking-wider text-black font-mono">
+                THANK YOU!
+              </div>
+
+              <div className="flex flex-col items-center gap-1 mt-1">
+                <div className="flex justify-center items-end h-5 w-full max-w-[160px] bg-white px-2 select-none">
+                  {[2, 1, 3, 1, 2, 2, 1, 3, 2, 1, 4, 1, 2, 3, 1, 2, 1, 3, 2, 2, 1, 4, 2, 1, 3, 1, 2, 2, 1, 3].map((width, idx) => (
+                    <div
+                      key={idx}
+                      className={`h-full ${idx % 2 === 0 ? "bg-black" : "bg-white"}`}
+                      style={{ width: `${width}px` }}
+                    />
+                  ))}
+                </div>
+                <div className="text-[8.5px] text-center text-black/50 tracking-wider font-mono">
+                  {selectedPODetail.id.toUpperCase()}
+                </div>
+              </div>
+
+              <div className="receipt-bottom-edge" />
+            </div>
+
+            <div className="w-full grid grid-cols-2 gap-3 mt-6 no-print">
+              <button
+                onClick={() => window.print()}
+                className="flex items-center justify-center gap-2 bg-white text-black border border-gray-300 py-2.5 rounded-md hover:bg-gray-50 text-xs font-bold transition shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print PO</span>
+              </button>
+              <button
+                onClick={() => setSelectedPODetail(null)}
+                className="flex items-center justify-center bg-[#1e1a18] text-white py-2.5 rounded-md hover:bg-[#2e2926] text-xs font-bold transition shadow-sm"
+              >
+                <span>Close Window</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM CONFIRMATION POPUP MODAL: DELETE SALE */}
+      {saleToDelete && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 no-print animate-fade-in">
+          <div className="bg-white border border-[#e4e4e0] rounded-lg max-w-sm w-full p-6 shadow-xl flex flex-col gap-4 font-body">
+            <div className="flex items-center gap-2.5 text-danger font-semibold">
+              <ShieldAlert className="w-5 h-5 text-primary flex-shrink-0" />
+              <h4 className="text-base font-bold text-foreground font-headings">
+                Confirm Deletion
+              </h4>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this sale? This will restore the product stock level.
+            </p>
+            <div className="flex justify-end gap-2.5 mt-2">
+              <button
+                onClick={() => setSaleToDelete(null)}
+                className="px-4 py-2 border border-[#e4e4e0] bg-[#f0f0ec] hover:bg-[#e4e4e0] text-foreground rounded-md text-xs font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const id = saleToDelete;
+                  setSaleToDelete(null);
+                  await runDeleteSale(id);
+                }}
+                className="px-4 py-2 bg-primary hover:bg-[#b0220a] text-white rounded-md text-xs font-bold transition shadow-sm"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM CONFIRMATION POPUP MODAL: DELETE PURCHASE */}
+      {poToDelete && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 no-print animate-fade-in">
+          <div className="bg-white border border-[#e4e4e0] rounded-lg max-w-sm w-full p-6 shadow-xl flex flex-col gap-4 font-body">
+            <div className="flex items-center gap-2.5 text-danger font-semibold">
+              <ShieldAlert className="w-5 h-5 text-primary flex-shrink-0" />
+              <h4 className="text-base font-bold text-foreground font-headings">
+                Confirm Deletion
+              </h4>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Are you sure you want to delete this purchase order? This will deduct the product stock level if it was delivered.
+            </p>
+            <div className="flex justify-end gap-2.5 mt-2">
+              <button
+                onClick={() => setPoToDelete(null)}
+                className="px-4 py-2 border border-[#e4e4e0] bg-[#f0f0ec] hover:bg-[#e4e4e0] text-foreground rounded-md text-xs font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const id = poToDelete;
+                  setPoToDelete(null);
+                  await runDeletePurchase(id);
+                }}
+                className="px-4 py-2 bg-primary hover:bg-[#b0220a] text-white rounded-md text-xs font-bold transition shadow-sm"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

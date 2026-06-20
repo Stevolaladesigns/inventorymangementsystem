@@ -17,6 +17,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { recordSale, recordPurchase, addProduct, updateProduct } from "../../actions";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface DashboardClientProps {
   initialProducts: any[];
@@ -35,6 +36,8 @@ export default function DashboardClient({
   const [suppliers] = useState(initialSuppliers);
   const [sales, setSales] = useState(initialSales);
   const [purchases, setPurchases] = useState(initialPurchases);
+  const { isAdmin, isManager } = useUserRole();
+  const canEdit = isAdmin || isManager;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
@@ -441,13 +444,15 @@ export default function DashboardClient({
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => triggerRestock(p)}
-                          className="flex items-center gap-0.5 text-xs text-primary font-bold px-2 py-1 border border-primary rounded-md hover:bg-red-50 transition"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Restock</span>
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => triggerRestock(p)}
+                            className="flex items-center gap-0.5 text-xs text-primary font-bold px-2 py-1 border border-primary rounded-md hover:bg-red-50 transition"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Restock</span>
+                          </button>
+                        )}
                       </div>
                     );
                   })
@@ -473,16 +478,18 @@ export default function DashboardClient({
                     className="bg-transparent border-0 outline-none w-full sm:w-48 font-medium text-foreground text-sm"
                   />
                 </div>
-                <button
-                  onClick={() => {
-                    resetProductForm();
-                    setIsProductModalOpen(true);
-                  }}
-                  className="flex items-center gap-1 bg-primary text-white text-sm px-3 py-2 rounded-md font-medium hover:bg-[#b0220a] transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Product</span>
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => {
+                      resetProductForm();
+                      setIsProductModalOpen(true);
+                    }}
+                    className="flex items-center gap-1 bg-primary text-white text-sm px-3 py-2 rounded-md font-medium hover:bg-[#b0220a] transition"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Product</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -555,13 +562,17 @@ export default function DashboardClient({
                           </td>
                           <td className="px-5 py-3.5 text-right">
                             <div className="flex items-center justify-end gap-2 text-xs font-semibold">
-                              <button
-                                onClick={() => triggerEdit(p)}
-                                className="text-primary hover:underline"
-                              >
-                                Edit
-                              </button>
-                              <span className="text-border">|</span>
+                              {canEdit && (
+                                <>
+                                  <button
+                                    onClick={() => triggerEdit(p)}
+                                    className="text-primary hover:underline"
+                                  >
+                                    Edit
+                                  </button>
+                                  <span className="text-border">|</span>
+                                </>
+                              )}
                               <button
                                 onClick={() => triggerSell(p)}
                                 disabled={isOutOfStock}
