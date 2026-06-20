@@ -148,7 +148,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile Header Bar */}
-      <div className="md:hidden flex items-center justify-between bg-sidebar text-sidebar-foreground px-4 py-3 border-b border-[#3a3330] w-full sticky top-0 z-50">
+      <div className="md:hidden flex items-center justify-between bg-sidebar text-sidebar-foreground px-4 py-3 border-b border-[#3a3330] w-full sticky top-0 z-50 no-print">
         <img
           src="/images/bidwest.png"
           alt={process.env.NEXT_PUBLIC_COMPANY_NAME || "Bidwest Ghana Ltd"}
@@ -166,14 +166,14 @@ export default function Sidebar() {
       </div>
 
       {/* Sidebar Desktop */}
-      <aside className="hidden md:flex md:flex-col h-screen sticky top-0 flex-shrink-0 z-40">
+      <aside className="hidden md:flex md:flex-col h-screen sticky top-0 flex-shrink-0 z-40 no-print">
         {sidebarContent}
       </aside>
 
       {/* Mobile Drawer Overlay */}
       {isOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          className="md:hidden fixed inset-0 bg-black/50 z-40 no-print"
           onClick={toggleSidebar}
         />
       )}
@@ -181,7 +181,7 @@ export default function Sidebar() {
       {/* Sidebar Drawer Mobile */}
       <div
         className={clsx(
-          "md:hidden fixed top-0 bottom-0 left-0 z-50 transition-transform duration-300 transform",
+          "md:hidden fixed top-0 bottom-0 left-0 z-50 transition-transform duration-300 transform no-print",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

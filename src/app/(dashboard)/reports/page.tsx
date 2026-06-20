@@ -5,7 +5,7 @@ import ReportsClient from "./ReportsClient";
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
-  const [sales, purchases, products] = await Promise.all([
+  const [sales, purchases, products, company] = await Promise.all([
     prisma.sale.findMany({
       include: {
         product: true,
@@ -28,6 +28,7 @@ export default async function ReportsPage() {
         name: "asc",
       },
     }),
+    prisma.company.findFirst(),
   ]);
 
   return (
@@ -35,6 +36,7 @@ export default async function ReportsPage() {
       sales={sales}
       purchases={purchases}
       products={products}
+      company={company}
     />
   );
 }

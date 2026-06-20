@@ -875,6 +875,60 @@ export default function SuppliersClient({
       {/* DETAIL MODAL: VIEW PURCHASE ORDER */}
       {selectedPODetail && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto receipt-modal-backdrop">
+          <style>{`
+            @media print {
+              @page {
+                size: A6 !important;
+                margin: 0 !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 105mm !important;
+                height: 148mm !important;
+                background: white !important;
+                overflow: hidden !important;
+              }
+              body * {
+                visibility: hidden !important;
+              }
+              .printable-receipt-area,
+              .printable-receipt-area * {
+                visibility: visible !important;
+              }
+              .printable-receipt-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 105mm !important;
+                height: 148mm !important;
+                max-height: 148mm !important;
+                padding: 6mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .receipt-modal-backdrop {
+                display: block !important;
+                position: static !important;
+                background: transparent !important;
+                padding: 0 !important;
+                overflow: visible !important;
+              }
+              .receipt-modal-content-wrapper {
+                display: block !important;
+                position: static !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: auto !important;
+                max-width: none !important;
+              }
+            }
+          `}</style>
           <div className="relative w-full max-w-sm my-8 flex flex-col items-center receipt-modal-content-wrapper">
             {/* Close button floating above the receipt card */}
             <button

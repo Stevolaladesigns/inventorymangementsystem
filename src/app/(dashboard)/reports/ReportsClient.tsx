@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import StatCard from "@/components/StatCard";
 import {
@@ -27,17 +27,33 @@ interface ReportsClientProps {
   sales: any[];
   purchases: any[];
   products: any[];
+  company: any;
 }
 
 export default function ReportsClient({
   sales: initialSales,
   purchases: initialPurchases,
   products: initialProducts,
+  company,
 }: ReportsClientProps) {
   const [sales, setSales] = useState(initialSales);
   const [purchases, setPurchases] = useState(initialPurchases);
   const [products, setProducts] = useState(initialProducts);
   const { isAdmin } = useUserRole();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("userSession");
+      if (stored) {
+        try {
+          setCurrentUser(JSON.parse(stored));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
 
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any | null>(null);
   const [selectedPODetail, setSelectedPODetail] = useState<any | null>(null);
@@ -268,33 +284,87 @@ export default function ReportsClient({
 
   return (
     <>
-      <Header
-          title="Reports & Analytics"
-          subtitle="Business insights and inventory performance"
-          lowStockCount={lowStockCount}
-          actions={
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-2 border border-border bg-card text-foreground text-sm px-3 py-2 rounded-md font-semibold hover:bg-input transition shadow-sm"
-              >
-                <Printer className="w-4 h-4 text-[#8a8278]" />
-                <span>Print</span>
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-2 bg-primary text-white text-sm px-4 py-2 rounded-md font-semibold hover:bg-[#b0220a] transition shadow-sm"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export PDF</span>
-              </button>
-            </div>
-          }
-        />
+      <div className="no-print">
+        <Header
+            title="Reports & Analytics"
+            subtitle="Business insights and inventory performance"
+            lowStockCount={lowStockCount}
+            actions={
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 border border-border bg-card text-foreground text-sm px-3 py-2 rounded-md font-semibold hover:bg-input transition shadow-sm"
+                >
+                  <Printer className="w-4 h-4 text-[#8a8278]" />
+                  <span>Print</span>
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 bg-primary text-white text-sm px-4 py-2 rounded-md font-semibold hover:bg-[#b0220a] transition shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export PDF</span>
+                </button>
+              </div>
+            }
+          />
+      </div>
 
-        <div className="flex-1 px-4 md:px-8 py-6 flex flex-col gap-6">
-          {/* Sub Navigation Tabs */}
-          <div className="flex items-center gap-1 border-b border-border">
+      <div className="flex-1 px-4 md:px-8 py-6 flex flex-col gap-6">
+        {/* PRINT ONLY: COMPANY HEADER */}
+        <div className="hidden print:flex flex-col gap-4 border-b-2 border-foreground pb-6 mb-4">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3.5">
+              <img
+                src="/images/company logo.png"
+                alt={company?.name || "Bidwest Ghana Ltd"}
+                className="h-14 w-auto object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = "/images/logo.png";
+                  e.currentTarget.onerror = (err) => {
+                    e.currentTarget.src = "/images/bidwest.png";
+                  };
+                }}
+              />
+              <div>
+                <h1 className="text-2xl font-bold text-black font-headings leading-none">
+                  {company?.name || "Bidwest Ghana Ltd"}
+                </h1>
+                <p className="text-xs text-gray-500 font-mono mt-1">
+                  Inventory & Procurement Management System
+                </p>
+              </div>
+            </div>
+            <div className="text-right font-mono text-[10px] text-gray-600 leading-normal">
+              <div className="font-bold text-black text-xs mb-1">HEAD OFFICE</div>
+              <div>{company?.address || "Plot 14, Spintex Road, Industrial Area, Accra"}</div>
+              <div>{company?.country || "Ghana"}</div>
+              <div>Phone: {process.env.NEXT_PUBLIC_COMPANY_PHONE || "+233 599 322 132"}</div>
+              <div>Email: {process.env.NEXT_PUBLIC_COMPANY_EMAIL || "info@bidwestghana.com"}</div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-end mt-4 pt-4 border-t border-dashed border-gray-300">
+            <div>
+              <h2 className="text-lg font-bold text-black font-headings uppercase tracking-wider">
+                {activeSubTab === "overview" ? "Executive Summary Report" : 
+                 activeSubTab === "sales" ? "Sales & Revenue Performance Report" : 
+                 activeSubTab === "movement" ? "Stock Movement & Inventory Log" : 
+                 activeSubTab === "purchases" ? "Procurement & Purchase Analysis" : "Inventory Report"}
+              </h2>
+              <p className="text-xs text-gray-600 font-medium mt-1">
+                Date Range: {startDate || "All Time"} {endDate ? `to ${endDate}` : ""}
+              </p>
+            </div>
+            <div className="text-right font-mono text-xs text-gray-600">
+              <div>Printed By: {currentUser?.name || "Admin Kwame"} ({currentUser?.role || "Inventory Manager"})</div>
+              <div>Date Generated: {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sub Navigation Tabs */}
+        <div className="flex items-center gap-1 border-b border-border no-print">
             <button
               onClick={() => setActiveSubTab("overview")}
               className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
@@ -541,7 +611,7 @@ export default function ReportsClient({
           {activeSubTab !== "overview" && (
             <div className="flex flex-col gap-6">
               {/* Filter Toolbar */}
-              <div className="bg-card border border-border rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+              <div className="bg-card border border-border rounded-lg p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm no-print">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
                   <div className="flex items-center gap-2 bg-input border border-border rounded-md px-3 py-2 text-sm text-muted-foreground w-full sm:w-64">
                     <Search className="w-4 h-4 text-[#8a8278] flex-shrink-0" />
@@ -901,6 +971,60 @@ export default function ReportsClient({
       {/* DETAIL MODAL: VIEW SALE TRANSACTION */}
       {selectedSaleDetail && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto receipt-modal-backdrop">
+          <style>{`
+            @media print {
+              @page {
+                size: A6 !important;
+                margin: 0 !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 105mm !important;
+                height: 148mm !important;
+                background: white !important;
+                overflow: hidden !important;
+              }
+              body * {
+                visibility: hidden !important;
+              }
+              .printable-receipt-area,
+              .printable-receipt-area * {
+                visibility: visible !important;
+              }
+              .printable-receipt-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 105mm !important;
+                height: 148mm !important;
+                max-height: 148mm !important;
+                padding: 6mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .receipt-modal-backdrop {
+                display: block !important;
+                position: static !important;
+                background: transparent !important;
+                padding: 0 !important;
+                overflow: visible !important;
+              }
+              .receipt-modal-content-wrapper {
+                display: block !important;
+                position: static !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: auto !important;
+                max-width: none !important;
+              }
+            }
+          `}</style>
           <div className="relative w-full max-w-sm my-8 flex flex-col items-center receipt-modal-content-wrapper">
             <button
               onClick={() => setSelectedSaleDetail(null)}
@@ -1052,6 +1176,60 @@ export default function ReportsClient({
       {/* DETAIL MODAL: VIEW PURCHASE ORDER */}
       {selectedPODetail && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto receipt-modal-backdrop">
+          <style>{`
+            @media print {
+              @page {
+                size: A6 !important;
+                margin: 0 !important;
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 105mm !important;
+                height: 148mm !important;
+                background: white !important;
+                overflow: hidden !important;
+              }
+              body * {
+                visibility: hidden !important;
+              }
+              .printable-receipt-area,
+              .printable-receipt-area * {
+                visibility: visible !important;
+              }
+              .printable-receipt-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 105mm !important;
+                height: 148mm !important;
+                max-height: 148mm !important;
+                padding: 6mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .receipt-modal-backdrop {
+                display: block !important;
+                position: static !important;
+                background: transparent !important;
+                padding: 0 !important;
+                overflow: visible !important;
+              }
+              .receipt-modal-content-wrapper {
+                display: block !important;
+                position: static !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: auto !important;
+                max-width: none !important;
+              }
+            }
+          `}</style>
           <div className="relative w-full max-w-sm my-8 flex flex-col items-center receipt-modal-content-wrapper">
             <button
               onClick={() => setSelectedPODetail(null)}
