@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export function middleware(request: NextRequest) {
-  const isLoggedIn = request.cookies.get("isLoggedIn")?.value === "true";
+export async function middleware(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET || "some-super-secret-fallback-for-development-bidwest",
+  });
+  const isLoggedIn = !!token;
   const { pathname } = request.nextUrl;
 
   // Protected pages

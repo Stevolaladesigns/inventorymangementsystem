@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import bcrypt from "bcryptjs";
 
 // ─── Role Guard ────────────────────────────────────────────────────────────
 // Reads the stored userId cookie set at login and verifies the role in the DB.
@@ -367,9 +368,14 @@ export async function updateUserProfile(
     throw new Error("Your session is stale or your user account was not found. Please log out and log in again.");
   }
 
+  const updateData: any = { ...data };
+  if (data.password !== undefined && data.password !== "") {
+    updateData.password = await bcrypt.hash(data.password, 10);
+  }
+
   const user = await prisma.user.update({
     where: { id },
-    data,
+    data: updateData,
   });
   return {
     id: user.id,
@@ -444,11 +450,12 @@ export async function createUser(data: {
   if (existing) {
     throw new Error("A user with this email address already exists.");
   }
+  const hashedPassword = await bcrypt.hash(data.password, 10);
   const user = await prisma.user.create({
     data: {
       name: data.name,
       email: data.email,
-      password: data.password,
+      password: hashedPassword,
       role: data.role || "Staff",
     },
   });
@@ -627,7 +634,7 @@ export async function updateUser(
   if (data.email !== undefined) updateData.email = data.email;
   if (data.role !== undefined) updateData.role = data.role;
   if (data.password !== undefined && data.password !== "") {
-    updateData.password = data.password;
+    updateData.password = await bcrypt.hash(data.password, 10);
   }
 
   const updated = await prisma.user.update({

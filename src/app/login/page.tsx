@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, Check, Loader2 } from "lucide-react";
-import { loginUser } from "../actions";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,14 +20,35 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const user = await loginUser(email, password);
-      const sessionStr = JSON.stringify(user);
-      // Store in localStorage for client-side use (Sidebar, hooks)
-      localStorage.setItem("userSession", sessionStr);
-      // Store in cookie so server actions (requireAdmin) can read the user id
-      document.cookie = `isLoggedIn=true; path=/; max-age=${60 * 60 * 24 * 7}`;
-      document.cookie = `userSession=${encodeURIComponent(sessionStr)}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      // To preserve compatibility with components like Sidebar and hooks that read
+      // the user details directly from localStorage and custom userSession/isLoggedIn cookies,
+      // we fetch the authenticated session details.
+      const sessionRes = await fetch("/api/auth/session");
+      const session = await sessionRes.json();
       
+      if (session?.user) {
+        const userObj = {
+          id: session.user.id,
+          name: session.user.name,
+          email: session.user.email,
+          role: session.user.role,
+        };
+        const sessionStr = JSON.stringify(userObj);
+        localStorage.setItem("userSession", sessionStr);
+        document.cookie = `isLoggedIn=true; path=/; max-age=${60 * 60 * 24 * 7}`;
+        document.cookie = `userSession=${encodeURIComponent(sessionStr)}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      }
+
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please check your credentials.");
