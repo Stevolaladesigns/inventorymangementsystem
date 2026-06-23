@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { useUserRole } from "@/hooks/useUserRole";
+import { signOut } from "next-auth/react";
 
 const allMenuItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
@@ -53,14 +54,14 @@ export default function Sidebar() {
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Clear cookies
     document.cookie = "isLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     document.cookie = "userSession=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     // Clear localStorage session
     localStorage.removeItem("userSession");
-    // Redirect to login
-    router.push("/login");
+    // Sign out from next-auth and redirect to login
+    await signOut({ callbackUrl: "/login" });
   };
 
   const getInitials = (nameStr: string) => {
